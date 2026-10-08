@@ -6,3 +6,7 @@
 - Unit/API regression covers price/lot rule dates, ST evidence, IPO/unknown-status rejection, exclusion of B/funds, T+1, point-in-time cutoff, persisted legacy state, concurrent step idempotency, failed-symbol isolation, dividend isolation and bounded large orders.
 - Build/ESM and inline JavaScript syntax validation run. Browser visual/UI automation not completed: installed Chromium failed before navigation with socket Operation not permitted. No claim of visual QA.
 - No real model API call, new key, paid request, broker action or full-market historical download was performed.
+
+## Soft-limit revision
+
+10 stocks /120 calendar days are now advisories, not validation ceilings. New persistent collection jobs request one stock and90 calendar days per source batch, with pause/resume and explicit failed intervals. New tests cover11 selected stocks over365 days, nonoverlapping date slicing, overlap deduplication, repeated/concurrent step versions and restored task parameters. No real model calls were made. Existing private deployment migration only adds job/part tables; no saved datasets/runs are rewritten.

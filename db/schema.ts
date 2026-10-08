@@ -4,3 +4,5 @@ export const runs=sqliteTable('runs',{id:text('id').primaryKey(),datasetId:text(
 export const fetchLogs=sqliteTable('fetch_logs',{id:text('id').primaryKey(),created:text('created').notNull(),payload:text('payload').notNull()});
 export const settings=sqliteTable('settings',{id:text('id').primaryKey(),payload:text('payload').notNull()});
 export const attempts=sqliteTable('model_attempts',{id:text('id').primaryKey(),runId:text('run_id').notNull(),reserved:text('reserved').notNull(),status:text('status').notNull(),payload:text('payload').notNull()});
+export const collectionJobs=sqliteTable('collection_jobs',{id:text('id').primaryKey(),created:text('created').notNull(),updated:text('updated').notNull(),version:integer('version').notNull().default(0),payload:text('payload').notNull()});
+export const collectionParts=sqliteTable('collection_parts',{id:text('id').primaryKey(),jobId:text('job_id').notNull(),payload:text('payload').notNull()});
