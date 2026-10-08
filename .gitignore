@@ -1,0 +1,12 @@
+dist/
+site.tar.gz
+node_modules/
+.data/
+.env
+.env.*
+!.env.example
+cache/
+*.sqlite
+*.pdf
+*.tar.gz
+.sites-runtime/
