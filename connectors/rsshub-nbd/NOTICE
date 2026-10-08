@@ -1,0 +1,16 @@
+This separate connector includes and adapts RSSHub's NBD route.
+Upstream project: https://github.com/DIYgod/RSSHub
+Pinned revision: fd9cc3bf1566657292ae86427d0ce939b832f219
+Original path: lib/routes/nbd/index.ts
+Original maintainers: nczitzk and RSSHub contributors.
+Original source is preserved byte-for-byte in upstream/index.ts; checksums in UPSTREAM.json.
+Code license: GNU Affero General Public License version 3; full text in LICENSE.
+Modifications dated 2026-10-08: remove framework-specific imports and route metadata;
+retain Cheerio selector/traversal/title-link mapping; use bounded sequential HTTP;
+allowlist source URLs; extract publication metadata only, no body; add import schema,
+provenance hashes, first-observed availability, fixtures, CLI, and explicit source limits.
+The complete modified connector source accompanies this package. Retain it with LICENSE,
+NOTICE, UPSTREAM.json, original source, and dependency lockfile on distribution.
+This notice does not assert that combining this program with another application avoids
+copyleft obligations. It is a separate one-shot program communicating via JSON files.
+News copyright and source access terms are separate from the open-source code license.

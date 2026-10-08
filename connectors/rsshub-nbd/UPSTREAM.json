@@ -1,0 +1,17 @@
+{
+  "project": "RSSHub",
+  "revision": "fd9cc3bf1566657292ae86427d0ce939b832f219",
+  "license": "AGPL-3.0-only",
+  "files": [
+    {
+      "file": "upstream/index.ts",
+      "source": "https://raw.githubusercontent.com/DIYgod/RSSHub/fd9cc3bf1566657292ae86427d0ce939b832f219/lib/routes/nbd/index.ts",
+      "sha256": "8e6aa9cdce9d833fbbeedcfaccce241084de0e8e99aa2e7307d9aa67a6ceffd2"
+    },
+    {
+      "file": "LICENSE",
+      "source": "https://raw.githubusercontent.com/DIYgod/RSSHub/fd9cc3bf1566657292ae86427d0ce939b832f219/LICENSE",
+      "sha256": "8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef"
+    }
+  ]
+}

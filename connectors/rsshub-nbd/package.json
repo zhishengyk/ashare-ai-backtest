@@ -1,0 +1,1 @@
+{"name":"rsshub-nbd-metadata-connector","version":"1.0.0","private":true,"type":"module","license":"AGPL-3.0-only","scripts":{"test":"node --test test/*.test.mjs"},"dependencies":{"cheerio":"1.1.2"},"engines":{"node":">=22"}}
