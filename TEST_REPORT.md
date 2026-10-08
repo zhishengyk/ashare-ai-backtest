@@ -10,3 +10,13 @@
 ## Soft-limit revision
 
 10 stocks /120 calendar days are now advisories, not validation ceilings. New persistent collection jobs request one stock and90 calendar days per source batch, with pause/resume and explicit failed intervals. New tests cover11 selected stocks over365 days, nonoverlapping date slicing, overlap deduplication, repeated/concurrent step versions and restored task parameters. No real model calls were made. Existing private deployment migration only adds job/part tables; no saved datasets/runs are rewritten.
+
+## Daily support revision
+
+Real source parser/live pilot:60131841 factor records,41 dividend/bonus records; CSI30063 bars for2026-07-01–09-28. Dividend9.8 per10 becomes0.98 per share; provider announcement date remains separate from unknown historical availability/payment date. Calendar2026 has242 announced SSE/SZSE sessions; holiday09-25 and reopening10-08 checked. Tests verify unknown-year/BSE scope, no future benchmark values, missing-session preservation, diagnostic-event blocking instead of unverified cash credit. Daily support is not complete institutional/PIT coverage.
+
+The job finalization race is closed using a persisted merging lease and version-guarded dataset finalization; expired final merge resumes without collecting a nonexistent slice. A one-trading-day trailing chunk is now retained instead of rejected. Regression tests cover both cases.
+
+## NBS metadata revision
+
+国家统计局静态宏观发布索引适配器使用元数据而非正文；按最多3页的小批次读取并留覆盖范围。生产固定observed_only，今天检索的记录不提前放入历史AI信息。测试覆盖重复/外部链接过滤、来源格式变化、默认观察时间门槛、拒绝访问不重试、robots规则变化停止和有界页数。原东方财富406不被绕过，宏观来源不被计作个股新闻补全。
