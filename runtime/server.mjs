@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import worker from '../dist/server/index.js';
 import { openDatabase } from './database.mjs';
+import { extractFiling } from './filings.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const host = process.env.HOST || '127.0.0.1';
@@ -13,7 +14,7 @@ if (!['127.0.0.1', '::1'].includes(host) && process.env.ALLOW_CONTAINER_BIND !==
 }
 process.umask(0o077);
 const DB = openDatabase(path.resolve(process.env.DATA_DIR || path.join(root, '.data')), path.join(root, 'drizzle'));
-const env = { DB, STORAGE_KIND: 'SQLite', RUNTIME_KIND: 'standalone-node' };
+const env = { DB, STORAGE_KIND: 'SQLite', RUNTIME_KIND: 'standalone-node', EXTRACT_FILING: extractFiling };
 for (const name of ['OPENAI_API_KEY', 'DEEPSEEK_API_KEY', 'DASHSCOPE_API_KEY', 'SILICONFLOW_API_KEY']) {
   if (process.env[name]) env[name] = process.env[name];
 }
@@ -52,16 +53,39 @@ const server = http.createServer(async (req, res) => {
     res.end(req.method === 'HEAD' ? undefined : Buffer.from(await response.arrayBuffer()));
   } catch { if (!res.headersSent) reject(res, 500, 'Internal server error'); else res.end(); }
 });
+// One durable collection batch at a time. Closing the browser does not stop an
+// explicitly started background job; cursor/version and source results live in SQLite.
+let backgroundTimer, backgroundWork = Promise.resolve(), backgroundBusy = false;
+async function collectInBackground() {
+  if (stopping || backgroundBusy) return;
+  backgroundBusy = true;
+  try {
+    const rows = DB.prepare('SELECT id,version,payload FROM collection_jobs ORDER BY created').all().results;
+    const row = rows.find(row => {
+      const job = JSON.parse(row.payload);
+      return job.background && !['completed','merge_failed'].includes(job.status) && (!job.inflightUntil || Date.parse(job.inflightUntil) <= Date.now());
+    });
+    if (row) {
+      const response = await worker.fetch(new Request(`http://127.0.0.1:${port}/api/collection-jobs/${row.id}/step`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expectedVersion:row.version})}),env);
+      if (!response.ok) console.error('Background collection batch stopped; inspect saved job and source errors');
+    }
+  } catch { if (!stopping) console.error('Background collection paused after an error; saved batches are preserved'); }
+  finally {
+    backgroundBusy = false;
+    if (!stopping) backgroundTimer = setTimeout(() => {backgroundWork = collectInBackground();},2000);
+  }
+}
 server.requestTimeout = 300000;
 server.headersTimeout = 15000;
 server.on('error', () => { console.error('Server could not start; check port availability and configuration'); DB.close(); process.exitCode = 1; });
 const displayHost = host === '::1' ? '[::1]' : '127.0.0.1';
-server.listen(port, host, () => console.log(`A-share lab ready: http://${displayHost}:${port} (SQLite; private local access only)`));
+server.listen(port, host, () => {console.log(`A-share lab ready: http://${displayHost}:${port} (SQLite; private local access only)`);backgroundTimer=setTimeout(()=>{backgroundWork=collectInBackground();},1000);});
 let stopping = false;
 function stop() {
   if (stopping) return;
   stopping = true;
-  server.close(() => { DB.close(); process.exit(0); });
+  clearTimeout(backgroundTimer);
+  server.close(async () => { await backgroundWork; DB.close(); process.exit(0); });
   setTimeout(() => { server.closeAllConnections(); DB.close(); process.exit(0); }, 10000).unref();
 }
 process.on('SIGTERM', stop);
