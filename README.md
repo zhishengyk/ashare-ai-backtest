@@ -1,5 +1,5 @@
 # 时点 · A股回测实验室
-
+sk-kfzjgmbiwcrjgpgdepusppmjwkmppoytgzitksxulmksmrnb
 独立本地部署的 A 股研究平台（Node.js + SQLite，无需 Sites、D1、R2 或 Cloudflare 账号），支持公开数据采集、按交易日推进、规则基线、财报/新闻时点快照、模拟成交、保存恢复和 JSON 导出。不是券商工具，不会提交真实订单。
 
 ## 当前可用
