@@ -20,3 +20,11 @@ The job finalization race is closed using a persisted merging lease and version-
 ## NBS metadata revision
 
 国家统计局静态宏观发布索引适配器使用元数据而非正文；按最多3页的小批次读取并留覆盖范围。生产固定observed_only，今天检索的记录不提前放入历史AI信息。测试覆盖重复/外部链接过滤、来源格式变化、默认观察时间门槛、拒绝访问不重试、robots规则变化停止和有界页数。原东方财富406不被绕过，宏观来源不被计作个股新闻补全。
+
+## Suspension and news timing revision
+
+New runs keep effective-dated, source-linked suspension evidence separate from missing and zero-volume bars. Tests preserve held quantities/last valid prices, flag stale valuation, skip suspended constituents without blocking other verified names, restore eligibility at resumption, and prevent future evidence from affecting earlier masks. Model packets contain identical masks and frozen weights; output validation rejects fictitious liquidation. Persisted older runs remain untouched.
+
+BYD official article metadata adapter is bounded to three verified canonical source URLs per enrichment, with two-second spacing, timeout, robots/access-denial stops, URL restrictions, schema checks and SHA-256 provenance. Researcher live-checked article548 HTTP200: displayed publication2024-09-27 differs from in-body event date2024-09-25. Tests use minimal metadata fixtures, not article prose. Default observation cutoff and explicit reported-publication sensitivity mode are distinct; reported dates do not establish archival point-in-time fidelity. News enrichment writes a new dataset copy and deduplicates URLs. No model calls or paid services were invoked.
+
+Final regression total:66 tests pass (including late retrospective status preserving historical marks, strict mode rejecting forged/derived replay metadata, and reported-time gate never preceding publication). Worker ESM export and inline UI JavaScript syntax pass. Independent targeted review reproduced the two edge cases before fixes and checks their corrected behavior; no paid model calls were used. Browser visual verification remains unperformed for this revision.
