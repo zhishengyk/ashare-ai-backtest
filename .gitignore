@@ -10,3 +10,6 @@ cache/
 *.pdf
 *.tar.gz
 .sites-runtime/
+
+__pycache__/
+*.pyc

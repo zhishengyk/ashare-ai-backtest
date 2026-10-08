@@ -4,6 +4,7 @@ No proxy rotation, spoofed browser headers, retries around denials, or auth bypa
 import datetime as dt
 import hashlib
 import json
+import re
 from pathlib import Path
 import time
 import urllib.parse
@@ -45,8 +46,8 @@ def read(url, body=None):
     return payload, provenance
 
 def prices(symbol, start, end):
-    if symbol not in ('sh600519','sh600036','sh601318'):
-        raise ValueError('Pilot limited to three approved stocks')
+    if not re.fullmatch(r'(sh(?:60\d{4}|688\d{3})|sz(?:00\d{4}|30[01]\d{3})|bj(?:43|83|87|88|92)\d{4})', symbol):
+        raise ValueError('Expected a mainland A-share identifier; also verify catalogue membership')
     first, last = dt.date.fromisoformat(start), dt.date.fromisoformat(end)
     if last < first or (last-first).days > 100:
         raise ValueError('Pilot window maximum 100 calendar days')
@@ -72,20 +73,20 @@ def prices(symbol, start, end):
                         'Corporate actions are not included; raw price returns are not total returns',
                         'No bar does not prove market holiday; may indicate suspension or missing data']}
 
-def announcements(start, end, page=1):
+def announcements(start, end, page=1, code='600519', org_id='', exchange='SSE'):
     if not 1 <= page <= 3:
         raise ValueError('Pilot bounded to three pages')
-    body={'pageNum':page,'pageSize':3,'column':'sse','tabName':'fulltext','plate':'sh',
-          'searchkey':'贵州茅台','secid':'','stock':'','category':'','trade':'',
+    body={'pageNum':page,'pageSize':3,'column':{'SSE':'sse','SZSE':'szse','BSE':'bse'}[exchange],'tabName':'fulltext','plate':{'SSE':'sh','SZSE':'sz','BSE':'bj'}[exchange],
+          'searchkey':'','secid':'','stock':code+','+org_id,'category':'','trade':'',
           'seDate':f'{start}~{end}','sortName':'time','sortType':'asc','isHLtitle':'false'}
     payload, provenance=read('https://www.cninfo.com.cn/new/hisAnnouncement/query',body)
     items=[]
     for a in payload.get('announcements') or []:
-        if a.get('secCode') != '600519':
+        if a.get('secCode') != code:
             continue
         stamp=a['announcementTime']
         local=dt.datetime.fromtimestamp(stamp/1000,dt.timezone(dt.timedelta(hours=8)))
-        items.append({'id':a['announcementId'],'symbol':'sh600519','title':a['announcementTitle'],
+        items.append({'id':a['announcementId'],'symbol':code,'title':a['announcementTitle'],
                       'source_timestamp_ms':stamp,'publication_date':local.date().isoformat(),
                       'timestamp_precision':'date_only_unverified_intraday',
                       'available_after_local_date':local.date().isoformat(),
@@ -102,8 +103,8 @@ if __name__ == '__main__':
 
 def news(symbol, start, end, page=1):
     """Bounded public search results, locally date filtered; never a complete archive."""
-    if symbol not in ('600519','600036','601318') or not 1 <= page <= 3:
-        raise ValueError('Pilot limited to three securities and three pages')
+    if not re.fullmatch(r'(?:60\d{4}|688\d{3}|00\d{4}|30[01]\d{3}|(?:43|83|87|88|92)\d{4})', symbol) or not 1 <= page <= 3:
+        raise ValueError('Expected A-share code and maximum three pages')
     first, last = dt.date.fromisoformat(start), dt.date.fromisoformat(end)
     if last < first or (last-first).days > 100:
         raise ValueError('Pilot window maximum 100 calendar days')
