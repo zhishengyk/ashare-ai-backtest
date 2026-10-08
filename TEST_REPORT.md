@@ -2,7 +2,7 @@
 
 ## Automated checks
 
-17 tests pass under Node.js 24. Covered: cutoff boundaries, future-bar isolation, explicit document timezones, duplicate securities/events, next-session fills, whole lots, cash affordability, suspension, limit-up, bounded slippage, T+1, gross cash dividend entitlement, completed-run idempotency, insufficient-sample metrics, API persistence, concurrent same-version steps, snapshot/export, cross-origin rejection, invalid AI weights/evidence, and upstream secret-reflection redaction. Build artifact exports valid Worker Fetch API. Inline browser JavaScript syntax checked.
+18 tests pass under Node.js 24. Covered: cutoff boundaries, future-bar isolation, explicit document timezones, duplicate securities/events, next-session fills, whole lots, cash affordability, suspension, limit-up, bounded slippage, T+1, gross cash dividend entitlement, completed-run idempotency, insufficient-sample metrics, API persistence, concurrent same-version steps, snapshot/export, cross-origin rejection, invalid AI weights/evidence, upstream secret-reflection redaction, and terminal AI-step avoidance of fabricated baseline decisions. Build artifact exports valid Worker Fetch API. Inline browser JavaScript syntax checked.
 
 An independent read-only code review also passed the accounting, cutoff, model adapter and transient-secret flow. A mocked provider test verified that replaying one run/version issues only one mocked request; no real model call was made by the authoring session.
 
