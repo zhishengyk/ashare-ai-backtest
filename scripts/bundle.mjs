@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+fs.mkdirSync('dist/server',{recursive:true});
 let parts=['catalogue','engine','collector','jobs','daily','nbs','nbd','byd','news','model'].map(f=>fs.readFileSync('worker/'+f+'.js','utf8').replaceAll('export ','').replace(/^import .*;\n/gm,''));
 parts.unshift('const CATALOGUE_SNAPSHOT = '+fs.readFileSync('worker/catalogue-snapshot.json','utf8')+';');
 parts.push('const PAGE = '+JSON.stringify(fs.readFileSync('worker/page.html','utf8'))+';');

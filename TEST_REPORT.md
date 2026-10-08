@@ -38,3 +38,24 @@ Final regression total:66 tests pass (including late retrospective status preser
 RSSHub connector ships as a separate complete AGPL source package with pinned original, license, NOTICE, SHA manifest and lockfile; actual selector/traversal/mapping code is reused. Connector tests10/10 pass, including timestamp conflicts, forbidden URLs, robots mismatch and source filtering. A bounded real-source smoke read robots, category and two original-source article metadata records; both contradictory timestamp sets remain publicationDate:null. Real output remains private and is excluded from public source. Application metadata import forces observed-only availability, strips raw/body fields, preserves timestamp-conflict flags and creates immutable copies. Final app suite now74 tests before the additional real-import smoke; no live model calls.
 
 Real import smoke: the actual RSSHub connector JSON (two records) imported through the same API used by the file UI into an existing real three-stock/195-bar dataset. HTTP200, new dataset copy, original payload unchanged. Both conflicting publication dates stayed null; zero documents leaked into historical strict or reported-date modes. Actual news output and market dataset were outside the repository and are not distributed. This was API-level validation, not browser visual automation.
+
+## Standalone Node / SQLite runtime — 2026-10-08
+
+Environment: assistant cloud workspace, Node v24.19.0. No user computer was accessed. No existing private database or historical API key was read. No model provider call was made.
+
+- `npm run build`: passed; build requires no Sites manifest or cloud binding
+- `npm run validate`: passed; generated ESM exports the reusable Fetch API handler
+- `npm test`: 77/77 passed (74 existing business tests, 2 standalone integration tests, and 1 key-precedence regression)
+- Real HTTP server child processes: HTML UI, SQLite status, catalogue search, import, baseline create/advance/export passed
+- The explicitly labeled synthetic fixture is test-only, stored in a temporary directory and deleted after the test. Four-day baseline completed with one trade and finite equity; model call records: 0
+- Two concurrent same-version requests committed one step. SIGTERM and a fresh process restored dataset/run/version, then completed the baseline
+- Host/DNS-rebinding protection, Origin and Sec-Fetch-Site rejection, JSON content-type enforcement and 1,500,000-byte limit passed
+- A dummy noncredential session marker was not persisted; no real credentials were used
+- Atomic SQLite batch rollback and migration re-open/idempotence passed
+- Docker executable unavailable: Docker image build, Compose startup and volume behavior NOT executed. Configuration is supplied for review; do not describe Docker as runtime-tested
+- External data sources and real model inference were not revalidated in this runtime migration. Existing collector/PIT/suspension suites use controlled fixtures; source availability remains dependent on third parties
+- No public endpoint, authentication service, perpetual hosting or 24×7 availability is provided. Default access is loopback only on the machine running this process
+
+Live-session observation: a fresh empty standalone database was started in a persistent PTY session and returned HTTP 200 for `/healthz`, `/api/status`, and `/api/datasets` across multiple checks. This executor isolates each command's network namespace; other command sessions cannot reach that loopback listener. The running PTY is not a public deployment and does not establish user-browser access or long-term service availability.
+
+Independent review additionally verified clean build without node_modules, failed migration transaction rollback/recovery, and non-loopback startup refusal before database creation. Its key-precedence and IPv6 startup-message findings were fixed, followed by a fresh 77/77 test pass and artifact validation. All model responses in tests were mocked, with dummy noncredential markers.

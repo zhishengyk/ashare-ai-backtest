@@ -1,0 +1,14 @@
+.git
+.data
+.env
+.env.*
+node_modules
+dist
+site.tar.gz
+.sites-runtime
+.openai
+cache
+**/__pycache__
+*.sqlite*
+*.pdf
+*.tar.gz

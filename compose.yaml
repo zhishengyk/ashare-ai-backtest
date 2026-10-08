@@ -1,0 +1,15 @@
+services:
+  ashare:
+    build: .
+    ports:
+      - "127.0.0.1:4317:4317"
+    volumes:
+      - ashare-data:/app/.data
+    restart: unless-stopped
+    stop_grace_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+volumes:
+  ashare-data:
