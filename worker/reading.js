@@ -1,6 +1,7 @@
 import {sha256} from './collector.js';
 
 export const READING_PROTOCOL='excerpt_receipt_v1';
+export function isNewsDocument(doc){return /新闻/.test(doc.kind||'');}
 const READING_PLACEHOLDERS=new Set(['正文未解析，只提供标题','仅提供元数据，正文未解析']);
 
 // A PDF link or a search hit is not article/report text. This describes only
@@ -20,7 +21,7 @@ export async function prepareReadingPacket(packet,{challenge=crypto.randomUUID()
  packet.documents=documents;
  packet.readingChallenge=challenge;
  packet.readingInstructions={protocol:READING_PROTOCOL,maxChecks:4,duplicateQuotesCountOnce:true,quoteFields:['title','text'],quoteMaxChars:180,quoteMinNonWhitespaceChars:8,fullDocumentReadingVerified:false};
- return {protocol:READING_PROTOCOL,asOf:packet.asOf,challenge,delivery:'not_attempted',requestHash:null,providerRequestId:null,documents:documents.map(doc=>({...doc})),checks:[],errors:[],status:'not_verified',understandingVerified:false,limits:['校验只能证明返回了与本次输入匹配的原文片段，不能证明完整阅读或正确理解','只提供标题时不能标记为正文阅读；正文窗口之外的内容未送入模型','结论与调仓影响是模型自述，语义正确性及因果关系未自动证明']};
+ return {protocol:READING_PROTOCOL,asOf:packet.asOf,requirements:packet.readingRequirements||{requireNewsQuote:false},challenge,delivery:'not_attempted',requestHash:null,providerRequestId:null,documents:documents.map(doc=>({...doc})),checks:[],errors:[],status:'not_verified',understandingVerified:false,limits:['校验只能证明返回了与本次输入匹配的原文片段，不能证明完整阅读或正确理解','只提供标题时不能标记为正文阅读；正文窗口之外的内容未送入模型','结论与调仓影响是模型自述，语义正确性及因果关系未自动证明']};
 }
 
 function readingError(code,evidenceId=null){return {code,evidenceId};}
@@ -63,9 +64,13 @@ export function verifyReadingOutput(value,audit,codes){
  const valid=result.checks.filter(check=>check.valid&&!check.redundantQuote);
  const textChecks=valid.filter(check=>check.field==='text');
  const bodies=audit.documents.filter(doc=>doc.contentLevel!=='metadata_only');
+ const news=audit.documents.filter(isNewsDocument),newsChecks=valid.filter(check=>isNewsDocument(docs.get(check.evidenceId)));
  if(audit.documents.length&&!valid.length)errors.push(readingError('NO_VERIFIED_EXCERPT'));
  if(bodies.length&&!textChecks.length)errors.push(readingError('AVAILABLE_TEXT_NOT_VERIFIED'));
- result.counts={sentDocuments:audit.documents.length,metadataOnlySent:audit.documents.filter(doc=>doc.contentLevel==='metadata_only').length,textExcerptsSent:bodies.length,verifiedTitles:valid.filter(check=>check.field==='title').length,verifiedTextExcerpts:textChecks.length,verifiedFacts:new Set(result.checks.filter(check=>check.valid&&check.fact).map(check=>JSON.stringify([check.evidenceId,check.fact.label,check.fact.value,check.fact.unit]))).size,citedDocuments:new Set(cited).size,verifiedCitations:new Set(valid.map(check=>check.evidenceId)).size};
+ if(audit.requirements?.requireNewsQuote&&news.length&&!newsChecks.length)errors.push(readingError('AVAILABLE_NEWS_NOT_VERIFIED'));
+ const previousCutoff=audit.requirements?.previousCutoff,newNews=news.filter(doc=>!previousCutoff||Date.parse(doc.availableAt)>Date.parse(previousCutoff)),newNewsChecks=newsChecks.filter(check=>newNews.some(doc=>doc.id===check.evidenceId));
+ if(audit.requirements?.requireNewNewsQuote&&newNews.length&&!newNewsChecks.length)errors.push(readingError('AVAILABLE_NEW_NEWS_NOT_VERIFIED'));
+ result.counts={sentDocuments:audit.documents.length,metadataOnlySent:audit.documents.filter(doc=>doc.contentLevel==='metadata_only').length,textExcerptsSent:bodies.length,sentNewsDocuments:news.length,sentNewNewsDocuments:newNews.length,verifiedNewsDocuments:new Set(newsChecks.map(check=>check.evidenceId)).size,verifiedNewNewsDocuments:new Set(newNewsChecks.map(check=>check.evidenceId)).size,verifiedNewsTitles:newsChecks.filter(check=>check.field==='title').length,verifiedNewsTextExcerpts:newsChecks.filter(check=>check.field==='text').length,verifiedTitles:valid.filter(check=>check.field==='title').length,verifiedTextExcerpts:textChecks.length,verifiedFacts:new Set(result.checks.filter(check=>check.valid&&check.fact).map(check=>JSON.stringify([check.evidenceId,check.fact.label,check.fact.value,check.fact.unit]))).size,citedDocuments:new Set(cited).size,verifiedCitations:new Set(valid.map(check=>check.evidenceId)).size};
  result.status=errors.length?'failed':!audit.documents.length?'no_visible_documents':textChecks.length?'text_excerpt_verified':'title_only_verified';
  result.gatePassed=!errors.length;
  return result;
