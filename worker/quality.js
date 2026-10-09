@@ -1,3 +1,4 @@
+import {evidenceDocument} from './reading.js';
 import {classifyAshare} from './catalogue.js';
 import {tradingRule,visibleDocuments,validDate} from './engine.js';
 
@@ -40,6 +41,6 @@ export function searchEvidence(d,date,{query='',codes=d.stocks.map(s=>s.code),li
   const groups=codes.map(code=>order(visible.filter(x=>x.code===code||x.association?.requestedCompanyCode===code)));
   for(let i=0;i<limit&&selected.size<limit;i++)for(const group of groups){if(group[i]&&selected.size<limit)selected.set(group[i].id,group[i]);}
   for(const doc of order(visible.filter(x=>x.scope==='macro')))if(selected.size<limit)selected.set(doc.id,doc);
-  const docs=[...selected.values()].map(x=>({id:x.id,code:x.code||null,association:x.association||null,title:x.title,url:x.url,kind:x.kind,publicationDate:x.publicationDate,availableAt:x.availableAt,textStatus:x.textStatus,text:(x.text||'仅提供元数据，正文未解析').slice(0,2000),availabilityBasis:x.replayAvailabilityBasis||x.availabilityBasis||'importer_reported'}));
+  const docs=[...selected.values()].map(x=>evidenceDocument(x,2000));
   return {query:String(query).slice(0,300),asOf:date+'T15:00:00+08:00',newsMode,codes,documents:docs,prices:d.stocks.filter(s=>codes.includes(s.code)).map(s=>({code:s.code,bars:s.bars.filter(b=>b.date<=date).slice(-30)})),availableDocuments:visible.length,returnedDocuments:docs.length,excludedFutureDocuments:(d.documents||[]).length-visible.length,perStock:codes.map(code=>({code,returnedDocuments:docs.filter(x=>x.code===code||x.association?.requestedCompanyCode===code).length})),archiveComplete:false};
 }

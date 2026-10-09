@@ -20,7 +20,7 @@ const newsMode=args['reported-publication']?'reported_publication':'strict_obser
 const quality=await call('/api/data-quality?'+new URLSearchParams({datasetId:args.dataset,newsMode}));
 assert.equal(quality.pricesCovered,true,'Repair missing stocks/bars before the long test');
 const status=await call('/api/model-config');assert.equal(status.configured,true,'Configure the server API key, model and budget first');
-const config={initial:10000000,frequency,ruleMode:'research_assumptions',acknowledgeUnverifiedRules:true,corporateActionMode:'price_only',newsMode,retrievalMode:'ai_search'};
+const config={readingVerification:'enforce',initial:10000000,frequency,ruleMode:'research_assumptions',acknowledgeUnverifiedRules:true,corporateActionMode:'price_only',newsMode,retrievalMode:'ai_search'};
 const summary={startedAt:new Date().toISOString(),datasetId:args.dataset,window:{start:dataset.start,end:dataset.end},stocks:dataset.stocks.map(s=>({code:s.code,name:s.name})),quality,documents:{total:dataset.documents.length,announcements:dataset.documents.filter(d=>d.kind==='公司公告').length,companyNews:dataset.documents.filter(d=>String(d.kind).includes('新闻')).length},limitations:['Price-only research assumptions; historical trading status and total returns are not verified',newsMode==='reported_publication'?'Publisher dates allow a historical experiment; immutable article revisions are not verified':'First-observed cutoff; newly collected news is unavailable in a past simulation','News archives are partial; source failures, page limits and missing bodies are retained']};
 let run,baseline;const diary=[];
 try{
@@ -36,17 +36,18 @@ try{
   if(run.state.decisions.length>decisions){
    const d=run.state.decisions.at(-1),snapshot=await call(`/api/runs/${run.id}/snapshot`);
    assert.ok(d.retrieval,'AI did not use the local retrieval tool');
+   assert.equal(d.readingAudit?.gatePassed,true,'Original-quote reading verification did not pass');
    assert.ok(d.retrieval.documents.every(doc=>Date.parse(doc.availableAt)<=Date.parse(d.cutoff)),'Future document leaked');
    assert.ok(snapshot.bars.every(s=>s.bars.every(b=>b.date<=snapshot.date)),'Future price leaked');
    assert.ok(d.evidenceIds.every(id=>d.retrieval.documents.some(doc=>doc.id===id)),'Citation is absent from retrieved evidence');
    assert.ok(Object.values(d.weights).reduce((sum,w)=>sum+w,0)<=1.000001,'Over-allocated portfolio');
-   const record={date:d.date,queries:d.retrieval.queries,returnedDocuments:d.retrieval.returnedDocuments,perStock:d.retrieval.perStock,citedDocuments:d.evidenceIds.length,citedNews:d.evidenceIds.filter(id=>String(dataset.documents.find(doc=>doc.id===id)?.kind).includes('新闻')).length,allocationPlan:d.allocationPlan,usage:d.usage,requests:d.requests,reason:d.reason};diary.push(record);decisions=run.state.decisions.length;
+   const record={date:d.date,queries:d.retrieval.queries,returnedDocuments:d.retrieval.returnedDocuments,perStock:d.retrieval.perStock,citedDocuments:d.evidenceIds.length,citedNews:d.evidenceIds.filter(id=>String(dataset.documents.find(doc=>doc.id===id)?.kind).includes('新闻')).length,allocationPlan:d.allocationPlan,readingAudit:d.readingAudit,usage:d.usage,requests:d.requests,reason:d.reason};diary.push(record);decisions=run.state.decisions.length;
    save('retrieval-diary.private.json',diary);save('progress.json',{runId:run.id,date:d.date,version:run.version,days:run.metrics.days,decisions,trades:run.state.trades.length});console.log(JSON.stringify({date:d.date,decisions,returnedDocuments:record.returnedDocuments,citedNews:record.citedNews}));
    if(decisions===1){const replay=await call(`/api/runs/${run.id}/step`,{expectedVersion:version});assert.equal(replay.version,run.version);assert.equal(replay.replayed,true);}
    await wait(delay);
   }
  }
  const exported=await call(`/api/runs/${run.id}/export`);assert.equal(run.metrics.days,run.state.days.length);assert.ok(run.state.trades.every(t=>t.date>t.signalDate));
- summary.ok=true;summary.ai={id:run.id,status:run.state.status,metrics:run.metrics,decisions:diary.length,trades:run.state.trades.length,requests:diary.reduce((sum,d)=>sum+d.requests,0),totalTokens:diary.reduce((sum,d)=>sum+(d.usage.total_tokens||0),0),decisionsWithNewsCitations:diary.filter(d=>d.citedNews).length,cutoffChecksPassed:true,versionReplayPassed:true};save('ai-export.private.json',exported);save('baseline-export.private.json',baseline);
+ summary.ok=true;summary.ai={id:run.id,status:run.state.status,metrics:run.metrics,decisions:diary.length,trades:run.state.trades.length,requests:diary.reduce((sum,d)=>sum+d.requests,0),totalTokens:diary.reduce((sum,d)=>sum+(d.usage.total_tokens||0),0),decisionsWithNewsCitations:diary.filter(d=>d.citedNews).length,verifiedTextDecisions:diary.filter(d=>d.readingAudit?.status==='text_excerpt_verified').length,verifiedTitleDecisions:diary.filter(d=>d.readingAudit?.status==='title_only_verified').length,readingChecksPassed:true,cutoffChecksPassed:true,versionReplayPassed:true};save('ai-export.private.json',exported);save('baseline-export.private.json',baseline);
 }catch(error){summary.ok=false;summary.error=error.message;summary.lastState=run?{runId:run.id,status:run.state.status,version:run.version,days:run.metrics.days,decisions:run.state.decisions.length}:null;process.exitCode=1;}
 summary.finishedAt=new Date().toISOString();save('summary.json',summary);console.log(JSON.stringify({ok:summary.ok,runId:summary.runId,ai:summary.ai,error:summary.error}));
