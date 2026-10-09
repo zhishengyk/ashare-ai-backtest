@@ -1,4 +1,5 @@
 dist/
+worker/index.js
 site.tar.gz
 node_modules/
 .data/
