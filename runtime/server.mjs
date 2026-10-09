@@ -75,7 +75,7 @@ async function collectInBackground() {
     if (!stopping) backgroundTimer = setTimeout(() => {backgroundWork = collectInBackground();},2000);
   }
 }
-server.requestTimeout = 300000;
+server.requestTimeout = 400000;
 server.headersTimeout = 15000;
 server.on('error', () => { console.error('Server could not start; check port availability and configuration'); DB.close(); process.exitCode = 1; });
 const displayHost = host === '::1' ? '[::1]' : '127.0.0.1';
