@@ -1,61 +1,46 @@
-# Full-market upgrade verification — 2026-10-08
+# 半年逐日真实 API 测试 — 2026-10-09
 
-- Catalogue: 5,920 org-deduplicated A-share disclosure index entries, Shanghai 2,467 / Shenzhen 3,100 / Beijing 353. Includes historical/delisted records; not an active-stock count. Code/name/pinyin/legacy-code search and market/board filters tested.
-- Real on-demand collection: 000001, 300750, 688981 and 920982, window 2026-09-21–24. All four returned real bars; Beijing Sohu prices independently matched Sina for Sep23/24. Tencent empty Beijing response was not mistaken for coverage.
-- Existing news source returned HTTP406: explicitly reported unavailable, no retries around denial or invented news. Announcements remain bounded and incomplete.
-- Unit/API regression covers price/lot rule dates, ST evidence, IPO/unknown-status rejection, exclusion of B/funds, T+1, point-in-time cutoff, persisted legacy state, concurrent step idempotency, failed-symbol isolation, dividend isolation and bounded large orders.
-- Build/ESM and inline JavaScript syntax validation run. Browser visual/UI automation not completed: installed Chromium failed before navigation with socket Operation not permitted. No claim of visual QA.
-- No real model API call, new key, paid request, broker action or full-market historical download was performed.
+12只A股，2026-04-01至2026-09-30，共125个交易日。SiliconFlow Qwen/Qwen3-8B真实调用，每个交易日15:00（上海时间）检索当时可见资料、核对引文并决策；通过后下一交易日09:30模拟成交。最后收盘只做阅读研究，没有窗口外订单。没有调用付费备用模型或券商。
 
-## Soft-limit revision
+## 结果
 
-10 stocks /120 calendar days are now advisories, not validation ceilings. New persistent collection jobs request one stock and90 calendar days per source batch, with pause/resume and explicit failed intervals. New tests cover11 selected stocks over365 days, nonoverlapping date slicing, overlap deduplication, repeated/concurrent step versions and restored task parameters. No real model calls were made. Existing private deployment migration only adds job/part tables; no saved datasets/runs are rewritten.
+| 项目 | AI每日决策 | 同数据每日等权基线 |
+| --- | ---: | ---: |
+| 期末资产（初始1000万元） | 9633510.76元 | 9661731.31元 |
+| 收益率 | -3.6649% | -3.3827% |
+| 最大回撤 | -7.2564% | -10.3412% |
+| 手续费合计 | 85805.24元 | 11643.69元 |
+| 模拟成交笔数 | 1393 | 1048 |
 
-## Daily support revision
+AI与基线收益相差-0.2822个百分点。费用与滑点已纳入；手续费表不单独列出滑点金额。佣金3bp、最低5元、卖出印花税5bp、过户费0.1bp、滑点5bp。AI可持现金，基线定期等权，风险暴露不同。不是含分红总收益或已核验可交易业绩。测试期间修正了请求结构与提示词，结果用于恢复链上的工程验收，不是预先冻结提示词的独立策略效果实验。
 
-Real source parser/live pilot:60131841 factor records,41 dividend/bonus records; CSI30063 bars for2026-07-01–09-28. Dividend9.8 per10 becomes0.98 per share; provider announcement date remains separate from unknown historical availability/payment date. Calendar2026 has242 announced SSE/SZSE sessions; holiday09-25 and reopening10-08 checked. Tests verify unknown-year/BSE scope, no future benchmark values, missing-session preservation, diagnostic-event blocking instead of unverified cash credit. Daily support is not complete institutional/PIT coverage.
+完成125次已核验决策、124次可供下一交易日执行的计划、250次成功模型请求，已知成功决策用量1409470 tokens。
 
-The job finalization race is closed using a persisted merging lease and version-guarded dataset finalization; expired final merge resumes without collecting a nonexistent slice. A one-trading-day trailing chunk is now retained instead of rejected. Regression tests cover both cases.
+## 数据与阅读证据
 
-## NBS metadata revision
+- 1500条窗口内真实日线，12股各125条；与核验交易日历比较，缺行情和零成交量日期均为0。
+- 数据集1686条文档：1054条公告、587条新闻搜索记录、45条其他资料。只有392条新闻通过来源证券代码或标题提及的公司关联筛选；搜索命中仍保存，但不自动当作该公司事件。来源标记为AI快讯的新闻共97条，模型输入保留该标志。1054条公告的链接日期与记录日期一致；12条新闻的搜索发布日期晚于链接日期1至4天。本实验在较晚日期之后释放，不把链接日期当作已核验首次发表时间，历史修订仍未知。
+- 补充回测前30天背景资料。125天有可见新闻，其中92天有新增新闻；125天匹配新闻引文，92天匹配新增新闻。不同新闻引用92篇。
+- 12家公司各解析上年年报、一季报及半年/中期报告，共36份；12份完整提取，24份只提取前30页。32MiB下载预算、总页数、已解析页数和完整PDF指纹明确记录。
+- 125天匹配财务指标与第一列原始金额，实际引用33份文本资料，覆盖12家公司。匹配方法：{"server_extract_from_verified_quote":122,"model_structured_fact":3}。没有推断金额单位、期间或报表口径。
+- 每次决策请求的JSON、SHA256、响应标识、原始引文、研究理由、配置分数与仓位均可追溯。独立复查请求指纹、源文本片段、截至当日的价格特征、字面引文、次日成交及每日现金/持仓/净值平衡均通过。最后待成交计划为null。
 
-国家统计局静态宏观发布索引适配器使用元数据而非正文；按最多3页的小批次读取并留覆盖范围。生产固定observed_only，今天检索的记录不提前放入历史AI信息。测试覆盖重复/外部链接过滤、来源格式变化、默认观察时间门槛、拒绝访问不重试、robots规则变化停止和有界页数。原东方财富406不被绕过，宏观来源不被计作个股新闻补全。
+新闻正文匹配次数为0：本次新闻是标题元数据。能够证明模型返回了本次输入中存在的标题与财务金额，不能证明新闻全文阅读、整份财报阅读、正确理解或引用确实导致某次调仓。每次发送的资料与实际核验引用分别记录，不声称每天读完全部股票的全部资料。
 
-## Suspension and news timing revision
+## 修复与失败记录
 
-New runs keep effective-dated, source-linked suspension evidence separate from missing and zero-volume bars. Tests preserve held quantities/last valid prices, flag stale valuation, skip suspended constituents without blocking other verified names, restore eligibility at resumption, and prevent future evidence from affecting earlier masks. Model packets contain identical masks and frozen weights; output validation rejects fictitious liquidation. Persisted older runs remain untouched.
+修复了搜索误关联、回测开始前缺少背景资料、财报只发送封面/表头、长PDF超过旧大小限制，以及模型编号串位、改写引文和配置字段缺失等问题。短编号由服务器绑定原文及指纹；随机回执锁定当次请求，额外矛盾字段仍会拒绝。财报使用数字行附近的文本窗口；错误金额、年份表头、错误股票和虚构正文不能通过。
 
-BYD official article metadata adapter is bounded to three verified canonical source URLs per enrichment, with two-second spacing, timeout, robots/access-denial stops, URL restrictions, schema checks and SHA-256 provenance. Researcher live-checked article548 HTTP200: displayed publication2024-09-27 differs from in-body event date2024-09-25. Tests use minimal metadata fixtures, not article prose. Default observation cutoff and explicit reported-publication sensitivity mode are distinct; reported dates do not establish archival point-in-time fidelity. News enrichment writes a new dataset copy and deduplicates URLs. No model calls or paid services were invoked.
+失败不提交该次决策或成交计划，不自动重试。9月11日模型响应已保存后，原工作盘写满导致回测状态提交失败；迁移本次数据库到有空间的临时盘后，复用已保存响应完成提交，没有重复调用该日API。修复后显式从保存检查点创建独立副本，原失败和恢复链保留。本隔离测试数据库共有15个失败/不确定步骤，含前期被放弃的诊断运行；全部记录留在私有失败清单，未混入125个成功决策。包括诊断运行的已知成功响应314次、已知tokens 1941824；2个超时请求的用量未知，不当作0。早期部分格式失败没有完整响应原文，后续已补齐保存；已有引用和分数记录不伪造成完整原始JSON。
 
-Final regression total:66 tests pass (including late retrospective status preserving historical marks, strict mode rejecting forged/derived replay metadata, and reported-time gate never preceding publication). Worker ESM export and inline UI JavaScript syntax pass. Independent targeted review reproduced the two edge cases before fixes and checks their corrected behavior; no paid model calls were used. Browser visual verification remains unperformed for this revision.
+旧的2026-10-08半年测试是每5个交易日一次、25次AI决策，仅有文档ID引用，不能追溯认定已阅读。本报告的125次逐日引文核验结果与旧测试分开。
 
-## Broad finance-press metadata revision
+## 平台验证与复现
 
-73 tests pass:66 previous regressions plus NBD metadata-only normalization, original-source filtering, duplicate/invalid links, strict and opt-in date cutoffs, eight-result pagination, exact public date request format, robots/denial/oversize failure stops, cache-backed immutable dataset enrichment and repeated-page idempotence. Inline UI syntax and Worker ESM validation pass. Source researcher live-tested BYD and 贵州茅台 queries, plus date-filtered offset8 with distinct results. Our JS parser checked the private actual responses: first sample5 retained originals/8, second page2/8; excluded unknown/third-party sources, did not include raw results in source repository. The source reports day precision only; no verified first-publication timestamp, full historical archive or paid AI search is claimed. Independent QA follows before publication; browser visual QA remains unperformed.
+132项测试通过；构建与ESM/页面脚本校验通过。测试涵盖字面引用、错误数字/股票、旧回执、未来资料、截断窗口、表头误读、失败不提交、原始响应保存、持久化与重复版本请求。PDF测试实际运行pdfinfo/pdftotext，使用明确标注的合成两页文件。此前Docker镜像以非root、只读文件系统启动，SQLite健康接口与每日阅读/财务核验控件通过。最新日期差异修订的镜像重建被宿主存储不足阻挡，未声称新版镜像已验证；最新版Node源码在临时盘完成构建、校验和132项测试。桌面和手机阅读审计检查无脚本错误。
 
-### Actual upstream reuse and import
+源码README包含采集、按月补充新闻、批量财报、每日真实API测试与检查点恢复命令。运行数据和实际输入/输出保存在私有目录，不发布到公共Git仓库。当前最终数据集ID：74e07940-b207-4c89-b13b-a19eb84eb24c；最终运行ID：1da22fe7-8e0d-46f9-9bff-bbf95eff31aa。
 
-RSSHub connector ships as a separate complete AGPL source package with pinned original, license, NOTICE, SHA manifest and lockfile; actual selector/traversal/mapping code is reused. Connector tests10/10 pass, including timestamp conflicts, forbidden URLs, robots mismatch and source filtering. A bounded real-source smoke read robots, category and two original-source article metadata records; both contradictory timestamp sets remain publicationDate:null. Real output remains private and is excluded from public source. Application metadata import forces observed-only availability, strips raw/body fields, preserves timestamp-conflict flags and creates immutable copies. Final app suite now74 tests before the additional real-import smoke; no live model calls.
+## 研究限制
 
-Real import smoke: the actual RSSHub connector JSON (two records) imported through the same API used by the file UI into an existing real three-stock/195-bar dataset. HTTP200, new dataset copy, original payload unchanged. Both conflicting publication dates stayed null; zero documents leaked into historical strict or reported-date modes. Actual news output and market dataset were outside the repository and are not distributed. This was API-level validation, not browser visual automation.
-
-## Standalone Node / SQLite runtime — 2026-10-08
-
-Environment: assistant cloud workspace, Node v24.19.0. No user computer was accessed. No existing private database or historical API key was read. No model provider call was made.
-
-- `npm run build`: passed; build requires no Sites manifest or cloud binding
-- `npm run validate`: passed; generated ESM exports the reusable Fetch API handler
-- `npm test`: 77/77 passed (74 existing business tests, 2 standalone integration tests, and 1 key-precedence regression)
-- Real HTTP server child processes: HTML UI, SQLite status, catalogue search, import, baseline create/advance/export passed
-- The explicitly labeled synthetic fixture is test-only, stored in a temporary directory and deleted after the test. Four-day baseline completed with one trade and finite equity; model call records: 0
-- Two concurrent same-version requests committed one step. SIGTERM and a fresh process restored dataset/run/version, then completed the baseline
-- Host/DNS-rebinding protection, Origin and Sec-Fetch-Site rejection, JSON content-type enforcement and 1,500,000-byte limit passed
-- A dummy noncredential session marker was not persisted; no real credentials were used
-- Atomic SQLite batch rollback and migration re-open/idempotence passed
-- Docker executable unavailable: Docker image build, Compose startup and volume behavior NOT executed. Configuration is supplied for review; do not describe Docker as runtime-tested
-- External data sources and real model inference were not revalidated in this runtime migration. Existing collector/PIT/suspension suites use controlled fixtures; source availability remains dependent on third parties
-- No public endpoint, authentication service, perpetual hosting or 24×7 availability is provided. Default access is loopback only on the machine running this process
-
-Live-session observation: a fresh empty standalone database was started in a persistent PTY session and returned HTTP 200 for `/healthz`, `/api/status`, and `/api/datasets` across multiple checks. This executor isolates each command's network namespace; other command sessions cannot reach that loopback listener. The running PTY is not a public deployment and does not establish user-browser access or long-term service availability.
-
-Independent review additionally verified clean build without node_modules, failed migration transaction rollback/recovery, and non-loopback startup refusal before database creation. Its key-precedence and IPv6 startup-message findings were fixed, followed by a fresh 77/77 test pass and artifact validation. All model responses in tests were mocked, with dummy noncredential markers.
+这是按来源声称发布日期的历史实验，网页与当前PDF版本没有不可变历史档案保证；严格首次观察模式仍会过滤今天才抓到的历史新闻。历史普通非ST交易状态采用显式研究假设，完整分红、送转、IPO/退市与特殊交易规则尚未核验。新闻来源、月份和页数有界，空结果不代表没有事件；不能称作完整全网新闻档案。模型预训练中的未来信息无法靠输入过滤彻底移除。结果不证明投资能力。

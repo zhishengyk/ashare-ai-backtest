@@ -10,3 +10,14 @@ test('NBD changed response fails closed, empty valid results remain explicitly i
 test('NBD pagination is bounded per request, accepts continued pages without total-research cap',()=>{let r=parseNbdSearch(payload(Array.from({length:8},(_,i)=>row(i))),{...input,offset:80},observed);assert.equal(r.coverage.nextOffset,88);assert.equal(r.coverage.sourceReportedTotal,10000);assert.equal(validateNbdQuery({...input,offset:800}).offset,800);assert.throws(()=>validateNbdQuery({...input,offset:3}));});
 test('NBD request uses verified public UI full date timestamps, preserves hash and excludes body',async()=>{let calls=[],waits=[],robots='TEST reviewed robots';const r=await collectNbd({...input,offset:8},{robotsHash:await sha256(robots),fetchImpl:async(u,o)=>{calls.push([u,o]);return new Response(u.endsWith('robots.txt')?robots:JSON.stringify(payload()));},delay:async n=>waits.push(n),now:()=>observed});assert.equal(calls.length,2);assert.equal(calls[1][0],NBD_SEARCH_URL);assert.deepEqual(JSON.parse(calls[1][1].body),{keyword:input.keyword,from:8,size:8,platform:[0,1],includeAd:true,startTime:'2026-09-01 00:00:00',endTime:'2026-09-30 23:59:59'});assert.deepEqual(waits,[2000]);assert.ok(r.provenance.every(x=>x.sha256.length===64));assert.ok(!JSON.stringify(r).includes('DO NOT SAVE'));});
 test('NBD robots change, denial and oversized body stop without fallback',async()=>{let count=0;await assert.rejects(collectNbd(input,{fetchImpl:async()=>{count++;return new Response('changed');},delay:async()=>{}}),/robots/);assert.equal(count,1);await assert.rejects(collectNbd(input,{fetchImpl:async()=>new Response('',{status:403})}),/403/);await assert.rejects(collectNbd(input,{fetchImpl:async()=>new Response('x'.repeat(1000001))}),/预算/);});
+test('different search and link dates are retained and use the later day for experimental availability',async()=>{
+ const {auditDataset}=await import('../worker/quality.js');
+ for(const publicationDate of ['2026-09-14','2026-09-16']){
+  const doc=parseNbdSearch(payload([{...row(),publishTime:publicationDate}]),input,observed).documents[0];
+  assert.equal(doc.publicationDate,publicationDate);assert.equal(doc.urlDate,'2026-09-15');assert.equal(doc.datePathMismatch,true);assert.equal(doc.firstPublicationVerified,false);
+  const lastDay=publicationDate<'2026-09-15'?'2026-09-15':publicationDate;
+  assert.equal(visibleDocuments([doc],lastDay,'reported_publication').length,0);
+  const after=new Date(Date.parse(lastDay)+86400000).toISOString().slice(0,10);assert.equal(visibleDocuments([doc],after,'reported_publication').length,1);
+  const q=auditDataset({start:input.start,end:input.end,stocks:[],documents:[doc],coverage:[]});assert.equal(q.newsDatePathMismatches.length,1);assert.ok(q.findings.some(f=>f.kind==='news_date_path_difference'));
+ }
+});

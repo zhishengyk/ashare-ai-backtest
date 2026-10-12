@@ -1,4 +1,5 @@
 // Metadata only: never preloads full-market bars or documents.
+import {readPublic} from './collector.js';
 export const CATALOGUE_SOURCE='https://www.cninfo.com.cn/new/data/szse_stock.json';
 export const RECOMMENDED_STOCKS=10;
 export function classifyAshare(code){if(/^60\d{4}$/.test(code))return {exchange:'SSE',board:'main',symbol:'sh'+code};if(/^688\d{3}$/.test(code))return {exchange:'SSE',board:'STAR',symbol:'sh'+code};if(/^00\d{4}$/.test(code))return {exchange:'SZSE',board:'main',symbol:'sz'+code};if(/^30[01]\d{3}$/.test(code))return {exchange:'SZSE',board:'ChiNext',symbol:'sz'+code};if(/^(?:43|83|87|88|92)\d{4}$/.test(code))return {exchange:'BSE',board:'Beijing',symbol:'bj'+code};return null;}
